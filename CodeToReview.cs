@@ -1,166 +1,79 @@
 ﻿using System;
-using System.Collections.Generic;//Typo so corrected it.
+using System.Collegctions.Generic;
 using System.Linq;
 
 namespace Utility.Valocity.ProfileHelper
 {
     public class People
     {
-        // REVIEW:
-        // Use DateTimeOffset consistently instead of mixing DateTime and DateTimeOffset.
-        // DateOfBirth is calculated when a default person is created.
-        private static DateTimeOffset DefaultDateOfBirth =>
-            DateTimeOffset.UtcNow.AddYears(-15);
-
-        public string Name { get; }
-
-        public DateTimeOffset DateOfBirth { get; }
-
-        public People(string name)
-            : this(name, DefaultDateOfBirth)// Corrected the constructer
-        {
-        }
-
-        public People(string name, DateTimeOffset dateOfBirth)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException(
-                    "Name cannot be null or empty.",
-                    nameof(name));
-            }
-
-            Name = name;
-            DateOfBirth = dateOfBirth;
-        }
-    }
+     private static readonly DateTimeOffset Under16 = DateTimeOffset.UtcNow.AddYears(-15);
+     public string Name { get; private set; }
+     public DateTimeOffset DOB { get; private set; }
+     public People(string name) : this(name, Under16.Date) { }
+     public People(string name, DateTime dob) {
+         Name = name;
+         DOB = dob;
+     }}
 
     public class BirthingUnit
     {
-        private const int MaxNameLength = 255;
-
-        private readonly List<People> _people;
-        private readonly Random _random;
+        /// <summary>
+        /// MaxItemsToRetrieve
+        /// </summary>
+        private List<People> _people;
 
         public BirthingUnit()
         {
             _people = new List<People>();
-            _random = new Random();
         }
 
         /// <summary>
-        /// Creates the specified number of people.
+        /// GetPeoples
         /// </summary>
-        /// <param name="count">Number of people to create.</param>
-        /// <returns>The people created by this call.</returns>
-        public IReadOnlyList<People> GetPeople(int count)
+        /// <param name="j"></param>
+        /// <returns>List<object></returns>
+        public List<People> GetPeople(int i)
         {
-            if (count < 0)
+            for (int j = 0; j < i; j++)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(count),
-                    "Count cannot be negative.");
+                try
+                {
+                    // Creates a dandon Name
+                    string name = string.Empty;
+                    var random = new Random();
+                    if (random.Next(0, 1) == 0) {
+                        name = "Bob";
+                    }
+                    else {
+                        name = "Betty";
+                    }
+                    // Adds new people to the list
+                    _people.Add(new People(name, DateTime.UtcNow.Subtract(new TimeSpan(random.Next(18, 85) * 356, 0, 0, 0))));
+                }
+                catch (Exception e)
+                {
+                    // Dont think this should ever happen
+                    throw new Exception("Something failed in user creation");
+                }
             }
-
-            var peopleCreated = new List<People>();
-
-            for (int i = 0; i < count; i++)
-            {
-                // REVIEW:
-                // Random.Next(0, 1) always returns 0 because the upper
-                // bound is exclusive. Use Next(2) to generate 0 or 1.
-                string name = _random.Next(2) == 0
-                    ? "Bob"
-                    : "Betty";
-
-                // REVIEW:
-                // Don't approximate years using 356 days.
-                // AddYears() correctly handles leap years.
-                int age = _random.Next(18, 85);
-
-                var dateOfBirth = DateTimeOffset.UtcNow.AddYears(-age);
-
-                var person = new People(name, dateOfBirth);
-
-                _people.Add(person);
-                peopleCreated.Add(person);
-            }
-
-            // REVIEW:
-            // Returning only the people created during this call avoids
-            // surprising behavior caused by returning the entire accumulated list.
-            return peopleCreated;
+            return _people;
         }
 
-        /// <summary>
-        /// Gets Bob's records based on age criteria.
-        /// </summary>
-        /// <param name="olderThan30">
-        /// If true, returns Bobs older than 30.
-        /// Otherwise returns all Bobs.
-        /// </param>
         private IEnumerable<People> GetBobs(bool olderThan30)
         {
-            var bobs = _people.Where(
-                person => string.Equals(
-                    person.Name,
-                    "Bob",
-                    StringComparison.OrdinalIgnoreCase));
-
-            if (!olderThan30)
-            {
-                return bobs;
-            }
-
-            // REVIEW:
-            // Original code used:
-            // DOB >= DateTime.Now.Subtract(30 years)
-            //
-            // That actually identifies people younger than approximately 30.
-            // For older than 30, DOB must be BEFORE the 30-year cutoff.
-            var cutoffDate = DateTimeOffset.UtcNow.AddYears(-30);
-
-            return bobs.Where(person => person.DateOfBirth < cutoffDate);
+            return olderThan30 ? _people.Where(x => x.Name == "Bob" && x.DOB >= DateTime.Now.Subtract(new TimeSpan(30 * 356, 0, 0, 0))) : _people.Where(x => x.Name == "Bob");
         }
 
-        /// <summary>
-        /// Combines a person's first name with a last name.
-        /// </summary>
-        public string GetMarried(People person, string lastName)
+        public string GetMarried(People p, string lastName)
         {
-            if (person == null)
+            if (lastName.Contains("test"))
+                return p.Name;
+            if ((p.Name.Length + lastName).Length > 255)
             {
-                throw new ArgumentNullException(nameof(person));
+                (p.Name + " " + lastName).Substring(0, 255);
             }
 
-            if (string.IsNullOrWhiteSpace(lastName))
-            {
-                throw new ArgumentException(
-                    "Last name cannot be null or empty.",
-                    nameof(lastName));
-            }
-
-            // REVIEW:
-            // Original code checked "test" case-sensitively.
-            // OrdinalIgnoreCase makes the intent explicit.
-            if (lastName.Contains(
-                    "test",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return person.Name;
-            }
-
-            string fullName = $"{person.Name} {lastName}";
-
-            // REVIEW:
-            // Original code called Substring() but ignored the result,
-            // so nothing was actually truncated.
-            if (fullName.Length > MaxNameLength)
-            {
-                fullName = fullName.Substring(0, MaxNameLength);
-            }
-
-            return fullName;
+            return p.Name + " " + lastName;
         }
     }
 }
